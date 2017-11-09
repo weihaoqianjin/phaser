@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>人物控制和碰撞检测</title>
+</head>
+<body>
+    <script src="../phaser.min.js"></script>
+    <script>
+
+        //宽高，渲染类型，渲染参数
+        var game = new Phaser.Game(800, 600, Phaser.CANVAS, '', { preload: preload, create: create, update: update });
+
+        function preload() {
+            game.load.image('sky', 'assets/sky.jpg'); //加载游戏背景图
+            game.load.image('ground', 'assets/platform.png'); //加载游戏地面
+            game.load.image('star', 'assets/star.png'); //加载星星图片
+            game.load.image('diamond', 'assets/diamond.png'); //加载钻石图片
+            game.load.spritesheet('baddie', 'assets/baddie.png', 32, 32); //敌人
+            game.load.spritesheet('dude', 'assets/dude.png', 32, 48); //加载单身狗图片
+            game.load.image('firstaid', 'assets/firstaid.png', 32, 32);
+        }
+
+        var platforms;
+        var player;
+        var enemy_left;
+        var enemy_right;
+
+        var cursors;
+
+        var stars;
+        var diamonds;
+        var aid;
+        var playerV = 150;
+
+        var score = 0;
+        var diam = 0;
+        var scoreText;
+        var diamText;
+
+        function create() {
+            cursors = game.input.keyboard.createCursorKeys();//监听键盘事件
+            game.physics.startSystem(Phaser.Physics.ARCADE); //开启游戏物理系统
+            game.add.sprite(0,0,'sky');//添加背景图
+            platforms = game.add.group();//添加到组里
+            platforms.enableBody = true; //使能组的物理引擎
+            var ground = platforms.create(0,game.world.height - 64,'ground');//创建地面
+            ground.scale.setTo(2,2);//比例缩放
+            ground.body.immovable = true; //固定定位
+            var ledge = platforms.create(500,400,'ground');//坐标设置右上角2障碍物
+            ledge.body.immovable = true;//使内容不因为碰撞而发生变化
+            var ledge = platforms.create(550,200,'ground');//坐标设置右上角1障碍物
+            ledge.body.immovable = true;
+            var ledge = platforms.create(-140,250,'ground');//左2
+            ledge.body.immovable = true;
+            var ledge = platforms.create(-160,100,'ground');//左1
+            ledge.body.immovable = true;
+            var ledge = platforms.create(-110,400,'ground');//左3
+            ledge.body.immovable = true;
+            var ledge = platforms.create(-50,600,'ground');//左4
+            ledge.body.immovable = true;
+
+            player = game.add.sprite(32,game.world.height - 200,'dude'); //小人位置
+            game.physics.arcade.enable(player);//使能小人物理引擎
+            player.body.bounce.y = 0.2;//跳跃反弹计算
+            player.body.gravity.y = 150;//跳跃重力值
+            player.body.collideWorldBounds = true;//小人与边界进行碰撞开启检测
+
+            //添加动画，左执行1-4帧，10帧每秒速度播放，循环播放
+            player.animations.add('left',[0,1,2,3],10,true);
+            //添加动画，右执行1-4帧，10帧每秒速度播放，循环播放
+            player.animations.add('right',[5,6,7,8],10,true);
+
+        }
+
+        function update() {
+            game.physics.arcade.collide(player, platforms);//小人与platforms组碰撞
+            if (cursors.left.isDown) {
+                player.body.velocity.x = -playerV;
+                player.animations.play('left');
+            } else if (cursors.right.isDown) {
+                player.body.velocity.x = playerV;
+                player.animations.play('right');
+            } else {
+                player.body.velocity.x=0;//松开按钮停止小人运动
+                player.animations.stop();
+                player.frame = 4;//第四帧
+            }
+            if (cursors.up.isDown && player.body.touching.down) {
+                player.body.velocity.y = -250;//按上时候Y=-250，不允许小人在空中在此跳跃
+            }
+        }
+
+
+
+    </script>
+</body>
+</html>
