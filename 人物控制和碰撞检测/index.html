@@ -37,6 +37,7 @@
         var diam = 0;
         var scoreText;
         var diamText;
+        var firstaid;
 
         function create() {
             cursors = game.input.keyboard.createCursorKeys();//监听键盘事件
@@ -60,21 +61,76 @@
             var ledge = platforms.create(-50,600,'ground');//左4
             ledge.body.immovable = true;
 
+            stars = game.add.group();//星星组
+            stars.enableBody = true;//开启速度
+            diamonds = game.add.group();//钻石组
+            diamonds.enableBody = true;//开启速度
+            for(var i = 0; i < 24;i++){//创建星星
+                var star = stars.create(i * 33,0,'star');
+                var diamond = diamonds.create(i * 250,0,'diamond');
+                star.body.gravity.y = 150;//重力150
+                star.body.bounce.y = 0.5 + Math.random() * 0.2;//随即弹性
+                diamond.body.gravity.y = 350;//重力150
+                diamond.body.bounce.y = 0.5 + Math.random() * 0.2;//随即弹性
+            }
+
+            //添加急救包
+            firstaid=game.add.sprite(600,300,"firstaid");
+            game.physics.enable(firstaid);
+            firstaid.body.gravity.y=200;
+            firstaid.body.bounce.y=0.6;
+
+            //左侧敌人
+            enemy_left = game.add.sprite(20,game.world.height - 300,'baddie'); //敌人1位置
+            game.physics.arcade.enable(enemy_left); //使能物理引擎
+            enemy_left.body.bounce.y = 0.5;//跳跃反弹计算
+            enemy_left.body.gravity.y = 300;//跳跃重力值
+            enemy_left.body.collideWorldBounds = true;//敌人与边界进行碰撞开启检测
+            enemy_left.animations.add('baddie');
+            enemy_left.animations.play('baddie',8,true);
+            game.add.tween(enemy_left).to({ x:260 },4000,null,true,0,-1,true);//补间动画
+
+
+            enemy_right = game.add.sprite(790,game.world.height - 500,'baddie'); //右侧敌人1位置
+            game.physics.arcade.enable(enemy_right); //速度，加速度，角速度，角加速度
+            enemy_right.body.bounce.y = 0.5;//跳跃反弹计算
+            enemy_right.body.gravity.y = 300;//跳跃重力值
+            enemy_right.body.collideWorldBounds = true;//敌人与边界进行碰撞开启检测
+            enemy_right.animations.add('baddie');
+            enemy_right.animations.play('baddie',8,true);
+            game.add.tween(enemy_right).from({ x:750},4000,null,true,0,Number.MAX_VALUE,true);
+            game.add.tween(enemy_right).to({ x:530},4000,null,true,0,Number.MAX_VALUE,true);
+
+
             player = game.add.sprite(32,game.world.height - 200,'dude'); //小人位置
             game.physics.arcade.enable(player);//使能小人物理引擎
             player.body.bounce.y = 0.2;//跳跃反弹计算
             player.body.gravity.y = 150;//跳跃重力值
             player.body.collideWorldBounds = true;//小人与边界进行碰撞开启检测
 
+
+
             //添加动画，左执行1-4帧，10帧每秒速度播放，循环播放
             player.animations.add('left',[0,1,2,3],10,true);
             //添加动画，右执行1-4帧，10帧每秒速度播放，循环播放
             player.animations.add('right',[5,6,7,8],10,true);
 
+            //添加分数计量器->X,Y,分数默认值,字体大小，字体填充颜色
+            scoreText = game.add.text(16,16,'星星得分:0',{ fontSize : '32px',fill: '#FFF'});
+            diamText = game.add.text(600,16,'钻石得分:0',{ fontSize : '32px',fill: 'red'});
+
         }
 
         function update() {
             game.physics.arcade.collide(player, platforms);//小人与platforms组碰撞
+            game.physics.arcade.collide(stars,platforms);//星星组和platforms组的碰撞
+            game.physics.arcade.collide(diamonds,platforms);//钻石组合platforms组的碰撞
+            game.physics.arcade.collide(firstaid,platforms);//急救包和platforms组的碰撞
+            game.physics.arcade.collide(enemy_left,platforms);//敌人和platforms组的碰撞
+            game.physics.arcade.collide(enemy_right,platforms);//右侧敌人和platforms组的碰撞
+
+            game.physics.arcade.overlap(player,enemy_left,gameOver,null,this);//小人和敌人碰撞，游戏结束
+            game.physics.arcade.overlap(player,stars,collectStar,null,this);//小人和星星组的碰撞,碰撞时收集星星
             if (cursors.left.isDown) {
                 player.body.velocity.x = -playerV;
                 player.animations.play('left');
@@ -91,6 +147,18 @@
             }
         }
 
+
+        function collectStar (player,star,diamond){
+            star.kill(); //触碰星星后自动销毁
+            score += 10;
+            scoreText.text = '星星的分:' +score ;
+        }
+
+        function gameOver(player){
+            player.kill();
+            var gameoverText = game.add.text(game.width/2,game.height/2,'GameOver',{ fontSize : '32px',fill: '#000'});
+            gameoverText.anchor.setTo(0.5,0.5)
+        }
 
 
     </script>
