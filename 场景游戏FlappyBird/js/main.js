@@ -101,15 +101,17 @@ game.States.play = function() {
         this.playTip = game.add.image(game.width/2, 300, 'play_tip');
         this.readyText.anchor.setTo(0.5, 0);
         this.playTip.anchor.setTo(0.5, 0);
-
+        //游戏未开始
+        this.hasStarted = false;
         //定义定时器产生下水道管子
         game.time.events.loop(900, this.generatePipes, this);
-
+        game.time.events.stop(false);
         //点击屏幕启动游戏
         game.input.onDown.addOnce(this.startGame, this);
 
     };
     this.update = function() {
+        //没开始就直接退出不进行更新，也不进行碰撞检测
         if(!this.hasStarted) return;
         game.physics.arcade.collide(this.bird, this.ground, this.hitGround, null, this);
         game.physics.arcade.overlap(this.bird, this.pipeGroup, this.hitPipe, null, this);
@@ -126,9 +128,9 @@ game.States.play = function() {
         if(this.resetPipe(topPipeY, bottomPipeY)) return;
          game.add.sprite(game.width, topPipeY, 'pipe', 0, this.pipeGroup);
          game.add.sprite(game.width, bottomPipeY, 'pipe', 1, this.pipeGroup);
-        this.pipeGroup.setAll('checkWorldBounds', true);
-        this.pipeGroup.setAll('outOfBoundsKill', true);
-        this.pipeGroup.setAll('body.velocity.x', -this.gameSpeed);
+        this.pipeGroup.setAll('checkWorldBounds', true);//开始检测边界
+        this.pipeGroup.setAll('outOfBoundsKill', true);//移除屏幕自动Kill
+        this.pipeGroup.setAll('body.velocity.x', -this.gameSpeed);//设置左侧移动加速度
     };
     this.startGame = function() {
         this.gameSpeed = 200;
