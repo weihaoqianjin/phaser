@@ -1,5 +1,82 @@
 /***********************/
 
+function Enemy(config) {
+    this.init = function() {
+        this.enemys = game.add.group();
+        this.enemys.enableBody = true;
+        this.enemys.createMultiple(config.selfPool, config.selfPic);
+        this.enemys.setAll('outOfBoundsKill', true);
+        this.enemys.setAll('checkWorldBounds', true);
+        // 敌人的子弹
+        this.enemyBullets = game.add.group();
+        this.enemyBullets.enableBody = true;
+        this.enemyBullets.createMultiple(config.bulletsPool, config.bulletPic);
+        this.enemyBullets.setAll('outOfBoundsKill', true);
+        this.enemyBullets.setAll('checkWorldBounds', true);
+        // 敌人的随机位置范围
+        this.maxWidth = game.width - game.cache.getImage(config.selfPic).width;
+        // 产生敌人的定时器
+        game.time.events.loop(Phaser.Timer.SECOND * config.selfTimeInterval, this.generateEnemy, this);
+        // 敌人的爆炸效果
+        this.explosions = game.add.group();
+        this.explosions.createMultiple(config.explodePool, config.explodePic);
+        this.explosions.forEach(function(explosion) {
+            explosion.animations.add(config.explodePic);
+        }, this);
+    }
+    // 产生敌人
+    this.generateEnemy = function() {
+        var e = this.enemys.getFirstExists(false);
+        if(e) {
+            e.reset(game.rnd.integerInRange(0, this.maxWidth), -game.cache.getImage(config.selfPic).height);
+            e.life = config.life;
+            e.body.velocity.y = config.velocity;
+        }
+    }
+    // 敌人开火
+    this.enemyFire = function() {
+        this.enemys.forEachExists(function(enemy) {
+            var bullet = this.enemyBullets.getFirstExists(false);
+            if(bullet) {
+                if(game.time.now > (enemy.bulletTime || 0)) {
+                    bullet.reset(enemy.x + config.bulletX, enemy.y + config.bulletY);
+                    bullet.body.velocity.y = config.bulletVelocity;
+                    enemy.bulletTime = game.time.now + config.bulletTimeInterval;
+                }
+            }
+        }, this);
+    };
+    // 打中了敌人
+    this.hitEnemy = function(myBullet, enemy) {
+        try {
+            config.firesound.play();
+        } catch(e) {}
+        myBullet.kill();
+        enemy.life--;
+        if(enemy.life <= 0) {
+            try {
+                config.crashsound.play();
+            } catch(e) {}
+            enemy.kill();
+            var explosion = this.explosions.getFirstExists(false);
+            explosion.reset(enemy.body.x, enemy.body.y);
+            explosion.play(config.explodePic, 30, false, true);
+            score += config.score;
+          //  config.game.updateText();
+        }
+    };
+}
+
+
+
+
+
+
+
+
+
+/***********************/
+
 // 分数
 var score = 0;
 
@@ -152,14 +229,118 @@ game.States.start = function() {
         this.awards.setAll('outOfBoundsKill', true);
         this.awards.setAll('checkWorldBounds', true);
         this.awardMaxWidth = game.width - game.cache.getImage('award').width;
-        game.time.events.loop(Phaser.Timer.SECOND * 30, this.generateAward, this);
+        //直接启动事件循环不需要在update中实时刷新，第一个是时间
+        game.time.events.loop(Phaser.Timer.SECOND * 10, this.generateAward, this);
         // 分数
         var style = {font: "16px Arial", fill: "#ff0000"};
         this.text = game.add.text(0, 0, "Score: 0", style);
         score = 0;
 
+
+        // 敌机
+        var enemyTeam = {
+            enemy1: {
+                game: this,
+                selfPic: 'enemy1',
+                bulletPic: 'bullet',
+                explodePic: 'explode1',
+                selfPool: 10,
+                bulletsPool: 50,
+                explodePool: 10,
+                life: 2,
+                velocity: 50,
+                bulletX: 9,
+                bulletY: 20,
+                bulletVelocity: 200,
+                selfTimeInterval: 2,
+                bulletTimeInterval: 1000,
+                score: 10,
+                firesound: this.firesound,
+                crashsound: this.crash1
+            },
+            enemy2: {
+                game: this,
+                selfPic: 'enemy2',
+                bulletPic: 'bullet',
+                explodePic: 'explode2',
+                selfPool: 10,
+                bulletsPool: 50,
+                explodePool: 10,
+                life: 3,
+                velocity: 40,
+                bulletX: 13,
+                bulletY: 30,
+                bulletVelocity: 250,
+                selfTimeInterval: 3,
+                bulletTimeInterval: 1200,
+                score: 20,
+                firesound: this.firesound,
+                crashsound: this.crash2
+            },
+            enemy3: {
+                game: this,
+                selfPic: 'enemy3',
+                bulletPic: 'bullet',
+                explodePic: 'explode3',
+                selfPool: 5,
+                bulletsPool: 25,
+                explodePool: 5,
+                life: 10,
+                velocity: 30,
+                bulletX: 22,
+                bulletY: 50,
+                bulletVelocity: 300,
+                selfTimeInterval: 10,
+                bulletTimeInterval: 1500,
+                score: 50,
+                firesound: this.firesound,
+                crashsound: this.crash3
+            }
+        }
+        this.enemy1 = new Enemy(enemyTeam.enemy1);
+        this.enemy1.init();
+        this.enemy2 = new Enemy(enemyTeam.enemy2);
+        this.enemy2.init();
+        this.enemy3 = new Enemy(enemyTeam.enemy3);
+        this.enemy3.init();
+
     };
 
+    // 产生一个奖
+    this.generateAward = function() {
+        var award = this.awards.getFirstExists(false);
+        if (award) {
+            //奖励位置随机生成
+            award.reset(game.rnd.integerInRange(0, this.awardMaxWidth), -game.cache.getImage('award').height);
+            award.body.velocity.y = 500;
+        }
+    };
+
+    // 被敌机打中
+    this.hitMyplane = function(myplane, bullet) {
+        bullet.kill();
+        if(myplane.level > 1) {
+            myplane.level--;
+        } else {
+            myplane.kill();
+            this.dead();
+        }
+    };
+    // 与敌机撞击
+    this.crashMyplane = function(myplane, enemy) {
+        myplane.kill();
+        this.dead();
+    };
+    // 挂了
+    this.dead = function() {
+        try {
+            this.ao.play();
+        } catch(e) {}
+        var myexplode = game.add.sprite(this.myplane.x, this.myplane.y, 'myexplode');
+        var anim = myexplode.animations.add('myexplode');
+        myexplode.animations.play('myexplode', 30, false, true);
+        anim.onComplete.add(this.gotoOver, this);
+    };
     // 自己开火
     this.myFireBullet = function() {
         //game.time.now > this.bulletTime设置每次发射子弹的间隔
@@ -216,30 +397,62 @@ game.States.start = function() {
     this.update = function() {
         if(this.myStartFire) {
             this.myFireBullet();
-            // this.enemy1.enemyFire();
-            // this.enemy2.enemyFire();
-            // this.enemy3.enemyFire();
-            // // 碰撞检测
-            // game.physics.arcade.overlap(this.mybullets, this.enemy1.enemys, this.enemy1.hitEnemy, null, this.enemy1);
-            // game.physics.arcade.overlap(this.mybullets, this.enemy2.enemys, this.enemy2.hitEnemy, null, this.enemy2);
-            // game.physics.arcade.overlap(this.mybullets, this.enemy3.enemys, this.enemy3.hitEnemy, null, this.enemy3);
-            // game.physics.arcade.overlap(this.enemy1.enemyBullets, this.myplane, this.hitMyplane, null, this);
-            // game.physics.arcade.overlap(this.enemy2.enemyBullets, this.myplane, this.hitMyplane, null, this);
-            // game.physics.arcade.overlap(this.enemy3.enemyBullets, this.myplane, this.hitMyplane, null, this);
-            // game.physics.arcade.overlap(this.enemy1.enemys, this.myplane, this.crashMyplane, null, this);
-            // game.physics.arcade.overlap(this.enemy2.enemys, this.myplane, this.crashMyplane, null, this);
-            // game.physics.arcade.overlap(this.enemy3.enemys, this.myplane, this.crashMyplane, null, this);
-            // game.physics.arcade.overlap(this.awards, this.myplane, this.getAward, null, this);
+            this.enemy1.enemyFire();
+            this.enemy2.enemyFire();
+            this.enemy3.enemyFire();
+            // 碰撞检测
+            game.physics.arcade.overlap(this.mybullets, this.enemy1.enemys, this.enemy1.hitEnemy, null, this.enemy1);
+            game.physics.arcade.overlap(this.mybullets, this.enemy2.enemys, this.enemy2.hitEnemy, null, this.enemy2);
+            game.physics.arcade.overlap(this.mybullets, this.enemy3.enemys, this.enemy3.hitEnemy, null, this.enemy3);
+            game.physics.arcade.overlap(this.enemy1.enemyBullets, this.myplane, this.hitMyplane, null, this);
+            game.physics.arcade.overlap(this.enemy2.enemyBullets, this.myplane, this.hitMyplane, null, this);
+            game.physics.arcade.overlap(this.enemy3.enemyBullets, this.myplane, this.hitMyplane, null, this);
+            game.physics.arcade.overlap(this.enemy1.enemys, this.myplane, this.crashMyplane, null, this);
+            game.physics.arcade.overlap(this.enemy2.enemys, this.myplane, this.crashMyplane, null, this);
+            game.physics.arcade.overlap(this.enemy3.enemys, this.myplane, this.crashMyplane, null, this);
+            game.physics.arcade.overlap(this.awards, this.myplane, this.getAward, null, this);
         }
     };
 };
 
-
+game.States.over = function() {
+    this.create = function() {
+        // 背景
+        var bg = game.add.tileSprite(0, 0, game.width, game.height, 'background');
+        // 版权
+        this.copyright = game.add.image(12, game.height - 16, 'copyright');
+        // 我的飞机
+        this.myplane = game.add.sprite(100, 100, 'myplane');
+        this.myplane.animations.add('fly');
+        this.myplane.animations.play('fly', 12, true);
+        // 分数
+        var style = {font: "bold 32px Arial", fill: "#ff0000", boundsAlignH: "center", boundsAlignV: "middle"};
+        this.text = game.add.text(0, 0, "Score: " + score, style);
+        this.text.setTextBounds(0, 0, game.width, game.height);
+        // 重来按钮
+        this.replaybutton = game.add.button(30, 300, 'replaybutton', this.onReplayClick, this, 0, 0, 1);
+        // 分享按钮
+        this.sharebutton = game.add.button(130, 300, 'sharebutton', this.onShareClick, this, 0, 0, 1);
+        // 背景音乐
+        this.normalback = game.add.audio('normalback', 0.2, true);
+        this.normalback.play();
+    };
+    // 重来
+    this.onReplayClick = function() {
+        this.normalback.stop();
+        game.state.start('start');
+    };
+    // 分享
+    this.onShareClick = function() {
+        document.title = makeTitle(score);
+        document.getElementById('share').style.display = 'block';
+    };
+}
 
 game.state.add('boot', game.States.boot);
 game.state.add('preload', game.States.preload);
 game.state.add('main', game.States.main);
 game.state.add('start', game.States.start);
-// game.state.add('over', game.States.over);
+ game.state.add('over', game.States.over);
 
 game.state.start('boot');
